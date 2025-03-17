@@ -3,3 +3,7 @@ pandas
 pytrends
 instaloader
 openai==0.28
+streamlit
+selenium
+pandas
+chromedriver-autoinstaller
