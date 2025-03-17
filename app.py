@@ -1,46 +1,55 @@
 import streamlit as st
-import openai
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+import time
+import pandas as pd
 
-# ✅ Replace this with your new, secure API key
-OPENAI_API_KEY = "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"
+# ------------------ Streamlit UI ------------------
+st.title("🔍 Instagram Username Extractor (No API)")
+st.markdown("This app searches Instagram and extracts public usernames from posts under a given hashtag.")
 
-# ✅ Set API key for OpenAI
-openai.api_key = OPENAI_API_KEY
+# User inputs
+search_term = st.text_input("Enter Hashtag (e.g., MassageDelhi)")
+search_button = st.button("Search Instagram")
 
-st.title("🔍 ChatGPT-Powered Massage Services Tracker in Delhi & Gurgaon")
+if search_button and search_term:
+    with st.spinner("Searching Instagram..."):
+        try:
+            # ------------------ Automate Instagram Search ------------------
+            options = webdriver.ChromeOptions()
+            options.add_argument("--headless")  # Run in background
+            options.add_argument("--disable-gpu")
+            options.add_argument("--no-sandbox")
 
-st.header("📊 AI-Powered Search Trend Analysis")
+            driver = webdriver.Chrome(options=options)  # Ensure you have the Chrome WebDriver installed
+            driver.get("https://www.instagram.com/explore/tags/" + search_term)
+            time.sleep(5)  # Wait for page to load
 
-# User input for search trends
-user_query = st.text_input("Enter a search query related to massage services:")
+            # Extract usernames from the first few posts
+            usernames = []
+            posts = driver.find_elements("xpath", "//a[contains(@href, '/p/')]")
+            for post in posts[:10]:  # Get usernames from first 10 posts
+                post.click()
+                time.sleep(3)
+                try:
+                    username = driver.find_element("xpath", "//header//a").text
+                    if username and username not in usernames:
+                        usernames.append(username)
+                except:
+                    pass
+                driver.back()
+                time.sleep(2)
 
-if st.button("Analyze Search Trends"):
-    if user_query:
-        with st.spinner("Fetching insights..."):
-            try:
-                # OpenAI API Call
-                response = openai.ChatCompletion.create(
-                    model="gpt-4",
-                    messages=[
-                        {"role": "system", "content": "You are an expert in analyzing search trends."},
-                        {"role": "user", "content": f"Find out how many people are searching for '{user_query}' in Delhi and Gurgaon and suggest business strategies."}
-                    ]
-                )
-                
-                result = response["choices"][0]["message"]["content"]
-                st.write("📌 **AI Insights:**")
-                st.write(result)
+            driver.quit()
 
-            except Exception as e:
-                st.error(f"⚠️ Error: {e}")
-    else:
-        st.warning("Please enter a search query.")
+            # ------------------ Display Results ------------------
+            if usernames:
+                df = pd.DataFrame(usernames, columns=["Instagram Username"])
+                st.write("### 📊 Extracted Usernames")
+                st.dataframe(df)
+                st.download_button(label="Download CSV", data=df.to_csv(index=False), file_name="instagram_usernames.csv", mime="text/csv")
+            else:
+                st.error("No usernames found. Try another hashtag.")
 
-st.sidebar.header("ℹ️ How to Use")
-st.sidebar.write("""
-1. **View AI Search Insights** for massage services in Delhi & Gurgaon.
-2. **Get Business Strategy Recommendations**.
-3. **Use Secure API Key Management** for deployment.
-""")
-
-st.sidebar.success("✅ Ready to Deploy on Streamlit Cloud!")
+        except Exception as e:
+            st.error(f"Error: {e}")
