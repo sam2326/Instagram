@@ -7,3 +7,4 @@ streamlit
 selenium
 pandas
 chromedriver-autoinstaller
+requests
