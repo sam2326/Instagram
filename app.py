@@ -1,55 +1,39 @@
 import streamlit as st
-from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
-import time
+import requests
 import pandas as pd
 
-# ------------------ Streamlit UI ------------------
-st.title("🔍 Instagram Username Extractor (No API)")
-st.markdown("This app searches Instagram and extracts public usernames from posts under a given hashtag.")
+# ------------------ Web Scraping API Configuration ------------------
+SCRAPER_API_KEY = "541a9d4121e17f3aa740e31181e289ec"  # Your ScraperAPI Key
 
-# User inputs
-search_term = st.text_input("Enter Hashtag (e.g., MassageDelhi)")
+# Function to fetch Instagram usernames from a hashtag page
+def fetch_instagram_usernames(hashtag):
+    url = f"https://api.scraperapi.com/?api_key={SCRAPER_API_KEY}&url=https://www.instagram.com/explore/tags/{hashtag}/"
+    headers = {"User-Agent": "Mozilla/5.0"}
+
+    response = requests.get(url, headers=headers)
+    
+    if response.status_code == 200:
+        data = response.text
+        usernames = list(set([x.split('href="/')[1].split('/')[0] for x in data.split() if 'href="/' in x and "/p/" not in x]))
+        return usernames
+    return []
+
+# ------------------ Streamlit UI ------------------
+st.title("🔍 Instagram Username Extractor (No API Required)")
+st.markdown("This app extracts **public usernames** from Instagram posts under a hashtag using ScraperAPI.")
+
+# User input
+hashtag = st.text_input("Enter Hashtag (e.g., MassageDelhi)")
 search_button = st.button("Search Instagram")
 
-if search_button and search_term:
+if search_button and hashtag:
     with st.spinner("Searching Instagram..."):
-        try:
-            # ------------------ Automate Instagram Search ------------------
-            options = webdriver.ChromeOptions()
-            options.add_argument("--headless")  # Run in background
-            options.add_argument("--disable-gpu")
-            options.add_argument("--no-sandbox")
-
-            driver = webdriver.Chrome(options=options)  # Ensure you have the Chrome WebDriver installed
-            driver.get("https://www.instagram.com/explore/tags/" + search_term)
-            time.sleep(5)  # Wait for page to load
-
-            # Extract usernames from the first few posts
-            usernames = []
-            posts = driver.find_elements("xpath", "//a[contains(@href, '/p/')]")
-            for post in posts[:10]:  # Get usernames from first 10 posts
-                post.click()
-                time.sleep(3)
-                try:
-                    username = driver.find_element("xpath", "//header//a").text
-                    if username and username not in usernames:
-                        usernames.append(username)
-                except:
-                    pass
-                driver.back()
-                time.sleep(2)
-
-            driver.quit()
-
-            # ------------------ Display Results ------------------
-            if usernames:
-                df = pd.DataFrame(usernames, columns=["Instagram Username"])
-                st.write("### 📊 Extracted Usernames")
-                st.dataframe(df)
-                st.download_button(label="Download CSV", data=df.to_csv(index=False), file_name="instagram_usernames.csv", mime="text/csv")
-            else:
-                st.error("No usernames found. Try another hashtag.")
-
-        except Exception as e:
-            st.error(f"Error: {e}")
+        usernames = fetch_instagram_usernames(hashtag)
+        
+        if usernames:
+            df = pd.DataFrame(usernames, columns=["Instagram Username"])
+            st.write("### 📊 Extracted Usernames")
+            st.dataframe(df)
+            st.download_button(label="Download CSV", data=df.to_csv(index=False), file_name="instagram_usernames.csv", mime="text/csv")
+        else:
+            st.error("No usernames found. Try another hashtag.")
