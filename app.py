@@ -2,7 +2,7 @@ import streamlit as st
 import openai
 
 # ✅ Replace this with your new, secure API key
-OPENAI_API_KEY = "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"
+OPENAI_API_KEY = "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"
 
 # ✅ Set API key for OpenAI
 openai.api_key = OPENAI_API_KEY
